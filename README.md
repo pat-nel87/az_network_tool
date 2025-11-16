@@ -56,8 +56,8 @@ go install github.com/your-org/azure-network-analyzer@latest
 
 **Docker:**
 ```bash
-docker pull your-org/azure-network-analyzer:latest
-docker run -v ~/.azure:/root/.azure azure-network-analyzer analyze \
+docker pull ghcr.io/YOUR_USERNAME/azure-network-analyzer:latest
+docker run -v ~/.azure:/root/.azure ghcr.io/YOUR_USERNAME/azure-network-analyzer:latest analyze \
   --subscription YOUR_SUB_ID --resource-group YOUR_RG
 ```
 
@@ -261,7 +261,7 @@ docker build -t azure-network-analyzer:latest .
 ```bash
 # Using Azure CLI credentials
 docker run -v ~/.azure:/root/.azure \
-  azure-network-analyzer:latest analyze \
+  ghcr.io/YOUR_USERNAME/azure-network-analyzer:latest analyze \
   --subscription YOUR_SUB_ID \
   --resource-group YOUR_RG
 
@@ -270,7 +270,7 @@ docker run \
   -e AZURE_CLIENT_ID=xxx \
   -e AZURE_CLIENT_SECRET=xxx \
   -e AZURE_TENANT_ID=xxx \
-  azure-network-analyzer:latest analyze \
+  ghcr.io/YOUR_USERNAME/azure-network-analyzer:latest analyze \
   --subscription YOUR_SUB_ID \
   --resource-group YOUR_RG
 ```

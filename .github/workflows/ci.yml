@@ -100,14 +100,14 @@ jobs:
         with:
           context: .
           push: false
-          tags: azure-network-analyzer:${{ github.sha }}
+          tags: ghcr.io/${{ github.repository_owner }}/azure-network-analyzer:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Test Docker image
         run: |
-          docker build -t azure-network-analyzer:test .
-          docker run azure-network-analyzer:test analyze --dry-run -s test-sub -g test-rg --visualize=false
+          docker build -t ghcr.io/${{ github.repository_owner }}/azure-network-analyzer:test .
+          docker run ghcr.io/${{ github.repository_owner }}/azure-network-analyzer:test analyze --dry-run -s test-sub -g test-rg --visualize=false
 
   auto-tag:
     name: Auto Tag Release
