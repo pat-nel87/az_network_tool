@@ -38,12 +38,14 @@ Thumbs.db
 
 # Output files from the analyzer
 output/
-*.json
-*.html
+network-report-*
+network-topology-*
 *.dot
 *.png
 *.svg
 !pkg/**/*.json
+!go.mod
+!go.sum
 
 # Environment and secrets
 .env
