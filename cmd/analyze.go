@@ -6,8 +6,11 @@ import (
 	"os"
 	"time"
 
+	"azure-network-analyzer/pkg/analyzer"
 	"azure-network-analyzer/pkg/azure"
 	"azure-network-analyzer/pkg/models"
+	"azure-network-analyzer/pkg/reporter"
+	"azure-network-analyzer/pkg/visualization"
 	"github.com/spf13/cobra"
 )
 
@@ -202,42 +205,107 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Printf("Collection complete! Total resources: %d\n", countResources(topology))
 
-	// 3. Analyze topology (placeholder for Phase 3)
+	// 3. Analyze topology
 	fmt.Println("\nAnalyzing topology...")
-	// TODO: Implement analysis logic in Phase 3
+	analysisReport := analyzer.Analyze(topology)
 
-	// 4. Generate reports (placeholder for Phase 5)
+	// Display analysis results
+	displayAnalysisResults(analysisReport)
+
+	// 4. Generate reports
 	fmt.Println("Generating reports...")
+	var reportContent []byte
+	var reportExt string
+
 	switch outputFormat {
 	case "json":
 		fmt.Println("  Generating JSON report...")
-		// TODO: Implement JSON reporter
+		content, err := reporter.GenerateJSON(topology, analysisReport)
+		if err != nil {
+			return fmt.Errorf("failed to generate JSON report: %w", err)
+		}
+		reportContent = content
+		reportExt = ".json"
 	case "markdown":
 		fmt.Println("  Generating Markdown report...")
-		// TODO: Implement Markdown reporter
+		content := reporter.GenerateMarkdown(topology, analysisReport)
+		reportContent = []byte(content)
+		reportExt = ".md"
 	case "html":
 		fmt.Println("  Generating HTML report...")
-		// TODO: Implement HTML reporter
+		content := reporter.GenerateHTML(topology, analysisReport)
+		reportContent = []byte(content)
+		reportExt = ".html"
 	default:
 		return fmt.Errorf("unsupported output format: %s", outputFormat)
 	}
 
-	// 5. Generate visualization if requested (placeholder for Phase 4)
+	// Write report to file or display info
+	if outputPath != "" {
+		err := writeOutput(reportContent)
+		if err != nil {
+			return fmt.Errorf("failed to write report: %w", err)
+		}
+		fmt.Printf("  Report saved to: %s\n", outputPath)
+	} else {
+		// Auto-generate filename
+		timestamp := time.Now().Format("20060102-150405")
+		filename := fmt.Sprintf("network-report-%s-%s%s", resourceGroup, timestamp, reportExt)
+		err := os.WriteFile(filename, reportContent, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write report: %w", err)
+		}
+		fmt.Printf("  Report saved to: %s\n", filename)
+	}
+
+	// 5. Generate visualization if requested
 	if includeViz {
 		fmt.Println("\nGenerating topology diagram...")
+
+		// Generate DOT content
+		dotContent := visualization.GenerateDOTFile(topology)
+
+		timestamp := time.Now().Format("20060102-150405")
+		var vizFilename string
+		var vizContent []byte
+		var err error
+
 		switch vizFormat {
 		case "svg":
 			fmt.Println("  Rendering SVG...")
-			// TODO: Implement SVG rendering
+			vizContent, err = visualization.RenderSVG(dotContent)
+			if err != nil {
+				fmt.Printf("  Warning: Could not render SVG: %v\n", err)
+				fmt.Println("  Falling back to DOT file...")
+				vizContent = []byte(dotContent)
+				vizFilename = fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp)
+			} else {
+				vizFilename = fmt.Sprintf("network-topology-%s-%s.svg", resourceGroup, timestamp)
+			}
 		case "png":
 			fmt.Println("  Rendering PNG...")
-			// TODO: Implement PNG rendering
+			vizContent, err = visualization.RenderPNG(dotContent)
+			if err != nil {
+				fmt.Printf("  Warning: Could not render PNG: %v\n", err)
+				fmt.Println("  Falling back to DOT file...")
+				vizContent = []byte(dotContent)
+				vizFilename = fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp)
+			} else {
+				vizFilename = fmt.Sprintf("network-topology-%s-%s.png", resourceGroup, timestamp)
+			}
 		case "dot":
 			fmt.Println("  Generating DOT file...")
-			// TODO: Implement DOT file generation
+			vizContent = []byte(dotContent)
+			vizFilename = fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp)
 		default:
 			return fmt.Errorf("unsupported visualization format: %s", vizFormat)
 		}
+
+		err = os.WriteFile(vizFilename, vizContent, 0644)
+		if err != nil {
+			return fmt.Errorf("failed to write visualization: %w", err)
+		}
+		fmt.Printf("  Diagram saved to: %s\n", vizFilename)
 	}
 
 	fmt.Println("\nAnalysis complete!")
@@ -267,4 +335,134 @@ func writeOutput(content []byte) error {
 	}
 
 	return os.WriteFile(outputPath, content, 0644)
+}
+
+// displayAnalysisResults shows the analysis results in the console
+func displayAnalysisResults(report *analyzer.AnalysisReport) {
+	// Display summary
+	fmt.Println("\n--- TOPOLOGY SUMMARY ---")
+	fmt.Printf("Virtual Networks: %d\n", report.Summary.TotalVNets)
+	fmt.Printf("Subnets: %d\n", report.Summary.TotalSubnets)
+	fmt.Printf("Network Security Groups: %d\n", report.Summary.TotalNSGs)
+	fmt.Printf("Security Rules: %d\n", report.Summary.TotalSecurityRules)
+	fmt.Printf("Route Tables: %d\n", report.Summary.TotalRouteTables)
+	fmt.Printf("Routes: %d\n", report.Summary.TotalRoutes)
+	fmt.Printf("Private Endpoints: %d\n", report.Summary.TotalPrivateEndpoints)
+	fmt.Printf("NAT Gateways: %d\n", report.Summary.TotalNATGateways)
+	fmt.Printf("VPN Gateways: %d\n", report.Summary.TotalVPNGateways)
+	fmt.Printf("ExpressRoute Circuits: %d\n", report.Summary.TotalERCircuits)
+	fmt.Printf("Load Balancers: %d\n", report.Summary.TotalLoadBalancers)
+	fmt.Printf("Application Gateways: %d\n", report.Summary.TotalAppGateways)
+	if len(report.Summary.TotalIPAddressSpace) > 0 {
+		fmt.Printf("Address Spaces: %v\n", report.Summary.TotalIPAddressSpace)
+	}
+	fmt.Printf("VNet Peerings: %d\n", report.Summary.VNetPeeringCount)
+
+	// Display security findings
+	if len(report.SecurityFindings) > 0 {
+		fmt.Println("\n--- SECURITY FINDINGS ---")
+
+		// Group by severity
+		critical := []analyzer.SecurityFinding{}
+		high := []analyzer.SecurityFinding{}
+		medium := []analyzer.SecurityFinding{}
+		low := []analyzer.SecurityFinding{}
+		info := []analyzer.SecurityFinding{}
+
+		for _, finding := range report.SecurityFindings {
+			switch finding.Severity {
+			case analyzer.SeverityCritical:
+				critical = append(critical, finding)
+			case analyzer.SeverityHigh:
+				high = append(high, finding)
+			case analyzer.SeverityMedium:
+				medium = append(medium, finding)
+			case analyzer.SeverityLow:
+				low = append(low, finding)
+			case analyzer.SeverityInfo:
+				info = append(info, finding)
+			}
+		}
+
+		fmt.Printf("\nTotal: %d findings\n", len(report.SecurityFindings))
+		fmt.Printf("  Critical: %d | High: %d | Medium: %d | Low: %d | Info: %d\n",
+			len(critical), len(high), len(medium), len(low), len(info))
+
+		// Display critical and high findings in detail
+		if len(critical) > 0 {
+			fmt.Println("\n[CRITICAL]")
+			for _, f := range critical {
+				fmt.Printf("  * %s\n", f.Description)
+				fmt.Printf("    Resource: %s", f.Resource)
+				if f.Rule != "" {
+					fmt.Printf(" | Rule: %s", f.Rule)
+				}
+				fmt.Println()
+				fmt.Printf("    Recommendation: %s\n", f.Recommendation)
+			}
+		}
+
+		if len(high) > 0 {
+			fmt.Println("\n[HIGH]")
+			for _, f := range high {
+				fmt.Printf("  * %s\n", f.Description)
+				fmt.Printf("    Resource: %s", f.Resource)
+				if f.Rule != "" {
+					fmt.Printf(" | Rule: %s", f.Rule)
+				}
+				fmt.Println()
+				fmt.Printf("    Recommendation: %s\n", f.Recommendation)
+			}
+		}
+
+		if len(medium) > 0 {
+			fmt.Println("\n[MEDIUM]")
+			for _, f := range medium {
+				fmt.Printf("  * %s\n", f.Description)
+				fmt.Printf("    Resource: %s\n", f.Resource)
+			}
+		}
+
+		if len(low) > 0 {
+			fmt.Println("\n[LOW]")
+			for _, f := range low {
+				fmt.Printf("  * %s\n", f.Description)
+			}
+		}
+	} else {
+		fmt.Println("\n--- SECURITY FINDINGS ---")
+		fmt.Println("No security issues found!")
+	}
+
+	// Display orphaned resources
+	hasOrphaned := len(report.OrphanedResources.UnattachedNSGs) > 0 ||
+		len(report.OrphanedResources.UnusedRouteTables) > 0 ||
+		len(report.OrphanedResources.UnusedNATGateways) > 0 ||
+		len(report.OrphanedResources.IsolatedSubnets) > 0
+
+	if hasOrphaned {
+		fmt.Println("\n--- ORPHANED/UNUSED RESOURCES ---")
+		if len(report.OrphanedResources.UnattachedNSGs) > 0 {
+			fmt.Printf("Unattached NSGs: %v\n", report.OrphanedResources.UnattachedNSGs)
+		}
+		if len(report.OrphanedResources.UnusedRouteTables) > 0 {
+			fmt.Printf("Unused Route Tables: %v\n", report.OrphanedResources.UnusedRouteTables)
+		}
+		if len(report.OrphanedResources.UnusedNATGateways) > 0 {
+			fmt.Printf("Unused NAT Gateways: %v\n", report.OrphanedResources.UnusedNATGateways)
+		}
+		if len(report.OrphanedResources.IsolatedSubnets) > 0 {
+			fmt.Printf("Subnets without NSG: %v\n", report.OrphanedResources.IsolatedSubnets)
+		}
+	}
+
+	// Display recommendations
+	if len(report.Recommendations) > 0 {
+		fmt.Println("\n--- RECOMMENDATIONS ---")
+		for i, rec := range report.Recommendations {
+			fmt.Printf("%d. %s\n", i+1, rec)
+		}
+	}
+
+	fmt.Println()
 }
