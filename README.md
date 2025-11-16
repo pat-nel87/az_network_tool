@@ -35,7 +35,7 @@ A comprehensive CLI tool for analyzing Azure network infrastructure, identifying
 
 ### Prerequisites
 
-- Go 1.21 or later
+- Go 1.23 or later
 - Azure CLI (for authentication)
 - Azure subscription with at least Reader access
 - Graphviz (optional, for PNG rendering)
