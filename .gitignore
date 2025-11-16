@@ -1,5 +1,6 @@
 # Binaries
 az-network-analyzer
+bin/
 *.exe
 *.exe~
 *.dll
