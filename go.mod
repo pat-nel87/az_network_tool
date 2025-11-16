@@ -2,8 +2,6 @@ module azure-network-analyzer
 
 go 1.23.0
 
-toolchain go1.24.10
-
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/network/armnetwork v1.1.0
