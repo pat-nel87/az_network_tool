@@ -22,19 +22,14 @@ FROM alpine:3.19
 # Install runtime dependencies
 RUN apk add --no-cache ca-certificates graphviz
 
-# Create non-root user
-RUN adduser -D -s /bin/sh appuser
+# Copy binary from builder to /usr/local/bin for global access
+COPY --from=builder /app/az-network-analyzer /usr/local/bin/az-network-analyzer
 
-WORKDIR /app
+# Create output directory
+RUN mkdir -p /output && chmod 777 /output
 
-# Copy binary from builder
-COPY --from=builder /app/az-network-analyzer .
+WORKDIR /output
 
-# Set ownership
-RUN chown -R appuser:appuser /app
-
-USER appuser
-
-# Set entrypoint
-ENTRYPOINT ["./az-network-analyzer"]
+# Set entrypoint with absolute path
+ENTRYPOINT ["/usr/local/bin/az-network-analyzer"]
 CMD ["--help"]
