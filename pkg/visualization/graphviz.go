@@ -39,10 +39,12 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 		vnetNodes[vnet.ID] = vnetNodeID
 
 		dot.WriteString(fmt.Sprintf("  subgraph cluster_%s {\n", sanitizeName(vnet.Name)))
-		dot.WriteString(fmt.Sprintf("    label=\"%s\\n%s\";\n", vnet.Name, strings.Join(vnet.AddressSpace, "\\n")))
+		dot.WriteString(fmt.Sprintf("    label=\"VNet: %s\\n%s\";\n", vnet.Name, strings.Join(vnet.AddressSpace, "\\n")))
 		dot.WriteString("    style=filled;\n")
 		dot.WriteString("    color=lightblue;\n")
-		dot.WriteString("    fillcolor=\"#e6f3ff\";\n\n")
+		dot.WriteString("    fillcolor=\"#e6f3ff\";\n")
+		dot.WriteString("    fontsize=14;\n")
+		dot.WriteString("    fontname=\"Helvetica-Bold\";\n\n")
 
 		// Add subnets as nodes
 		for j, subnet := range vnet.Subnets {
@@ -196,22 +198,52 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 		}
 	}
 
-	// Add Private Endpoints
-	for i, pe := range topology.PrivateEndpoints {
-		peNodeID := fmt.Sprintf("pe_%d", i)
-		targetName := extractResourceName(pe.PrivateLinkServiceID)
-		dot.WriteString(fmt.Sprintf("  %s [label=\"PE\\n%s\\n→ %s\", fillcolor=\"#FFB6C1\", shape=point, width=0.3];\n",
-			peNodeID, pe.Name, targetName))
+	// Private Endpoints will be shown in a table instead of as nodes
+	// (removed from graph for clarity)
 
-		// Connect to subnet
-		if subnetNode, exists := subnetNodes[pe.SubnetID]; exists {
-			dot.WriteString(fmt.Sprintf("  %s -> %s [style=dotted, color=pink, label=\"private link\"];\n",
-				subnetNode, peNodeID))
+	// Add Private Endpoints Table
+	if len(topology.PrivateEndpoints) > 0 {
+		dot.WriteString("\n  // Private Endpoints Table\n")
+		dot.WriteString("  subgraph cluster_private_endpoints {\n")
+		dot.WriteString("    label=\"Private Endpoints\";\n")
+		dot.WriteString("    style=filled;\n")
+		dot.WriteString("    fillcolor=\"#fff9e6\";\n")
+		dot.WriteString("    fontsize=12;\n")
+		dot.WriteString("    fontname=\"Helvetica-Bold\";\n")
+		dot.WriteString("    node [shape=plaintext];\n")
+		dot.WriteString("    pe_table [label=<\n")
+		dot.WriteString("      <TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\">\n")
+		dot.WriteString("        <TR>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Name</B></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Target Service</B></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Subnet</B></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Private IP</B></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Status</B></TD>\n")
+		dot.WriteString("        </TR>\n")
+
+		for _, pe := range topology.PrivateEndpoints {
+			targetName := extractResourceName(pe.PrivateLinkServiceID)
+			subnetName := extractResourceName(pe.SubnetID)
+			status := pe.ConnectionState
+			if status == "" {
+				status = "N/A"
+			}
+			dot.WriteString("        <TR>\n")
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", pe.Name))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", targetName))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", subnetName))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", pe.PrivateIPAddress))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", status))
+			dot.WriteString("        </TR>\n")
 		}
+
+		dot.WriteString("      </TABLE>\n")
+		dot.WriteString("    >];\n")
+		dot.WriteString("  }\n\n")
 	}
 
 	// Add legend
-	dot.WriteString("\n  // Legend\n")
+	dot.WriteString("  // Legend\n")
 	dot.WriteString("  subgraph cluster_legend {\n")
 	dot.WriteString("    label=\"Legend\";\n")
 	dot.WriteString("    style=filled;\n")
