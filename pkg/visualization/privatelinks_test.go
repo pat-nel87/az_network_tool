@@ -67,9 +67,14 @@ func TestPrivateEndpointsTable(t *testing.T) {
 		t.Errorf("Private endpoints should not be rendered as nodes, found %d node declarations", nodeCount)
 	}
 
-	// Verify private endpoints table exists
-	if !strings.Contains(dot, "cluster_private_endpoints") {
-		t.Error("Private endpoints table cluster not found")
+	// Verify private endpoints table exists (as a node, not cluster)
+	if !strings.Contains(dot, "pe_table") {
+		t.Error("Private endpoints table node not found")
+	}
+
+	// Verify rank=sink is used to position table at bottom
+	if !strings.Contains(dot, "rank=sink") {
+		t.Error("Private endpoints table should use rank=sink for bottom positioning")
 	}
 
 	// Verify table header
@@ -147,7 +152,7 @@ func TestNoPrivateEndpoints(t *testing.T) {
 	dot := GenerateDOTFile(topology)
 
 	// Verify no private endpoints table is created
-	if strings.Contains(dot, "cluster_private_endpoints") {
+	if strings.Contains(dot, "pe_table") {
 		t.Error("Private endpoints table should not be present when there are no private endpoints")
 	}
 
