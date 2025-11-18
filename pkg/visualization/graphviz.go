@@ -205,24 +205,21 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 	// Private Endpoints will be shown in a table instead of as nodes
 	// (removed from graph for clarity)
 
-	// Add Private Endpoints Table
+	// Add Private Endpoints Table (positioned at bottom)
 	if len(topology.PrivateEndpoints) > 0 {
-		dot.WriteString("\n  // Private Endpoints Table\n")
-		dot.WriteString("  subgraph cluster_private_endpoints {\n")
-		dot.WriteString("    label=\"Private Endpoints\";\n")
-		dot.WriteString("    style=filled;\n")
-		dot.WriteString("    fillcolor=\"#fff9e6\";\n")
-		dot.WriteString("    fontsize=12;\n")
-		dot.WriteString("    fontname=\"Helvetica-Bold\";\n")
+		dot.WriteString("\n  // Private Endpoints Table (bottom of diagram)\n")
+		dot.WriteString("  {\n")
+		dot.WriteString("    rank=sink;\n") // Force to bottom
 		dot.WriteString("    node [shape=plaintext];\n")
 		dot.WriteString("    pe_table [label=<\n")
-		dot.WriteString("      <TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\">\n")
+		dot.WriteString("      <TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"3\">\n")
+		dot.WriteString("        <TR><TD COLSPAN=\"5\" BGCOLOR=\"#FFB6C1\"><FONT POINT-SIZE=\"11\"><B>Private Endpoints</B></FONT></TD></TR>\n")
 		dot.WriteString("        <TR>\n")
-		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Name</B></TD>\n")
-		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Target Service</B></TD>\n")
-		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Subnet</B></TD>\n")
-		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Private IP</B></TD>\n")
-		dot.WriteString("          <TD BGCOLOR=\"#FFB6C1\"><B>Status</B></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFE4E1\"><FONT POINT-SIZE=\"9\"><B>Name</B></FONT></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFE4E1\"><FONT POINT-SIZE=\"9\"><B>Target Service</B></FONT></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFE4E1\"><FONT POINT-SIZE=\"9\"><B>Subnet</B></FONT></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFE4E1\"><FONT POINT-SIZE=\"9\"><B>Private IP</B></FONT></TD>\n")
+		dot.WriteString("          <TD BGCOLOR=\"#FFE4E1\"><FONT POINT-SIZE=\"9\"><B>Status</B></FONT></TD>\n")
 		dot.WriteString("        </TR>\n")
 
 		for _, pe := range topology.PrivateEndpoints {
@@ -233,11 +230,11 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 				status = "N/A"
 			}
 			dot.WriteString("        <TR>\n")
-			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", pe.Name))
-			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", targetName))
-			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", subnetName))
-			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", pe.PrivateIPAddress))
-			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\">%s</TD>\n", status))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"8\">%s</FONT></TD>\n", pe.Name))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"8\">%s</FONT></TD>\n", targetName))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"8\">%s</FONT></TD>\n", subnetName))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"8\">%s</FONT></TD>\n", pe.PrivateIPAddress))
+			dot.WriteString(fmt.Sprintf("          <TD ALIGN=\"LEFT\"><FONT POINT-SIZE=\"8\">%s</FONT></TD>\n", status))
 			dot.WriteString("        </TR>\n")
 		}
 
