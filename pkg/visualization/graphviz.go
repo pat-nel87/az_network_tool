@@ -28,6 +28,11 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 	subnetNodes := make(map[string]string)
 	vnetNodes := make(map[string]string)
 
+	// Deduplicate NAT Gateways, NSGs, and Route Tables
+	natGateways := make(map[string]string) // resource ID -> node ID
+	nsgs := make(map[string]string)
+	routeTables := make(map[string]string)
+
 	// Create clusters for each VNet
 	for i, vnet := range topology.VirtualNetworks {
 		vnetNodeID := fmt.Sprintf("vnet_%d", i)
@@ -54,39 +59,83 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 			dot.WriteString(fmt.Sprintf(", fillcolor=\"%s\"", color))
 			dot.WriteString(", shape=box];\n")
 
-			// Add NSG shield if associated
+			// Register NSG for deduplication
 			if subnet.NetworkSecurityGroup != nil {
-				nsgNodeID := fmt.Sprintf("nsg_%d_%d", i, j)
-				nsgName := extractResourceName(*subnet.NetworkSecurityGroup)
-				dot.WriteString(fmt.Sprintf("    %s [label=\"NSG\\n%s\", fillcolor=\"#FFE4B5\", shape=octagon];\n",
-					nsgNodeID, nsgName))
-				dot.WriteString(fmt.Sprintf("    %s -> %s [style=dashed, color=orange, label=\"protects\"];\n",
-					nsgNodeID, subnetNodeID))
+				nsgID := *subnet.NetworkSecurityGroup
+				if _, exists := nsgs[nsgID]; !exists {
+					nsgs[nsgID] = fmt.Sprintf("nsg_%s", sanitizeName(extractResourceName(nsgID)))
+				}
 			}
 
-			// Add Route Table connection
+			// Register Route Table for deduplication
 			if subnet.RouteTable != nil {
-				rtNodeID := fmt.Sprintf("rt_%d_%d", i, j)
-				rtName := extractResourceName(*subnet.RouteTable)
-				dot.WriteString(fmt.Sprintf("    %s [label=\"RT\\n%s\", fillcolor=\"#DDA0DD\", shape=parallelogram];\n",
-					rtNodeID, rtName))
-				dot.WriteString(fmt.Sprintf("    %s -> %s [style=dotted, color=purple, label=\"routes\"];\n",
-					subnetNodeID, rtNodeID))
+				rtID := *subnet.RouteTable
+				if _, exists := routeTables[rtID]; !exists {
+					routeTables[rtID] = fmt.Sprintf("rt_%s", sanitizeName(extractResourceName(rtID)))
+				}
 			}
 
-			// Add NAT Gateway connection
+			// Register NAT Gateway for deduplication
 			if subnet.NATGateway != nil {
-				natNodeID := fmt.Sprintf("nat_%d_%d", i, j)
-				natName := extractResourceName(*subnet.NATGateway)
-				dot.WriteString(fmt.Sprintf("    %s [label=\"NAT\\n%s\", fillcolor=\"#98FB98\", shape=diamond];\n",
-					natNodeID, natName))
-				dot.WriteString(fmt.Sprintf("    %s -> %s [style=solid, color=green, label=\"egress\"];\n",
-					subnetNodeID, natNodeID))
+				natID := *subnet.NATGateway
+				if _, exists := natGateways[natID]; !exists {
+					natGateways[natID] = fmt.Sprintf("nat_%s", sanitizeName(extractResourceName(natID)))
+				}
 			}
 		}
 
 		dot.WriteString("  }\n\n")
 	}
+
+	// Render deduplicated NSGs (outside clusters)
+	for nsgID, nsgNodeID := range nsgs {
+		nsgName := extractResourceName(nsgID)
+		dot.WriteString(fmt.Sprintf("  %s [label=\"NSG\\n%s\", fillcolor=\"#FFE4B5\", shape=octagon];\n",
+			nsgNodeID, nsgName))
+	}
+
+	// Render deduplicated Route Tables (outside clusters)
+	for rtID, rtNodeID := range routeTables {
+		rtName := extractResourceName(rtID)
+		dot.WriteString(fmt.Sprintf("  %s [label=\"Route Table\\n%s\", fillcolor=\"#DDA0DD\", shape=parallelogram];\n",
+			rtNodeID, rtName))
+	}
+
+	// Render deduplicated NAT Gateways (outside clusters)
+	for natID, natNodeID := range natGateways {
+		natName := extractResourceName(natID)
+		dot.WriteString(fmt.Sprintf("  %s [label=\"NAT Gateway\\n%s\", fillcolor=\"#98FB98\", shape=diamond];\n",
+			natNodeID, natName))
+	}
+
+	// Connect subnets to their NSGs, Route Tables, and NAT Gateways
+	for _, vnet := range topology.VirtualNetworks {
+		for _, subnet := range vnet.Subnets {
+			subnetNodeID := subnetNodes[subnet.ID]
+
+			// Connect to NSG
+			if subnet.NetworkSecurityGroup != nil {
+				nsgNodeID := nsgs[*subnet.NetworkSecurityGroup]
+				dot.WriteString(fmt.Sprintf("  %s -> %s [style=dashed, color=orange, label=\"protects\"];\n",
+					nsgNodeID, subnetNodeID))
+			}
+
+			// Connect to Route Table
+			if subnet.RouteTable != nil {
+				rtNodeID := routeTables[*subnet.RouteTable]
+				dot.WriteString(fmt.Sprintf("  %s -> %s [style=dotted, color=purple, label=\"routes\"];\n",
+					subnetNodeID, rtNodeID))
+			}
+
+			// Connect to NAT Gateway
+			if subnet.NATGateway != nil {
+				natNodeID := natGateways[*subnet.NATGateway]
+				dot.WriteString(fmt.Sprintf("  %s -> %s [style=solid, color=green, label=\"egress\"];\n",
+					subnetNodeID, natNodeID))
+			}
+		}
+	}
+	dot.WriteString("\n")
 
 	// Add VNet peering edges (outside clusters)
 	for _, vnet := range topology.VirtualNetworks {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"azure-network-analyzer/pkg/analyzer"
@@ -270,6 +271,12 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		var vizContent []byte
 		var err error
 
+		// Determine output directory - same as report if specified, otherwise current directory
+		outputDir := "."
+		if outputPath != "" {
+			outputDir = filepath.Dir(outputPath)
+		}
+
 		switch vizFormat {
 		case "svg":
 			fmt.Println("  Rendering SVG...")
@@ -278,9 +285,9 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				fmt.Printf("  Warning: Could not render SVG: %v\n", err)
 				fmt.Println("  Falling back to DOT file...")
 				vizContent = []byte(dotContent)
-				vizFilename = fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp)
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp))
 			} else {
-				vizFilename = fmt.Sprintf("network-topology-%s-%s.svg", resourceGroup, timestamp)
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.svg", resourceGroup, timestamp))
 			}
 		case "png":
 			fmt.Println("  Rendering PNG...")
@@ -289,14 +296,14 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				fmt.Printf("  Warning: Could not render PNG: %v\n", err)
 				fmt.Println("  Falling back to DOT file...")
 				vizContent = []byte(dotContent)
-				vizFilename = fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp)
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp))
 			} else {
-				vizFilename = fmt.Sprintf("network-topology-%s-%s.png", resourceGroup, timestamp)
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.png", resourceGroup, timestamp))
 			}
 		case "dot":
 			fmt.Println("  Generating DOT file...")
 			vizContent = []byte(dotContent)
-			vizFilename = fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp)
+			vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp))
 		default:
 			return fmt.Errorf("unsupported visualization format: %s", vizFormat)
 		}
