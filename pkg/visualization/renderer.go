@@ -119,3 +119,51 @@ func RenderPNG(dotContent string) ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
+// RenderPDF converts a DOT string to PDF format
+// Note: PDF support depends on the underlying GraphViz installation
+func RenderPDF(dotContent string) ([]byte, error) {
+	ctx := context.Background()
+	g, err := graphviz.New(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create graphviz instance: %w", err)
+	}
+	defer g.Close()
+
+	graph, err := graphviz.ParseBytes([]byte(dotContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse DOT content: %w", err)
+	}
+	defer graph.Close()
+
+	var buf bytes.Buffer
+	// Use custom format string for PDF
+	if err := g.Render(ctx, graph, "pdf", &buf); err != nil {
+		return nil, fmt.Errorf("failed to render PDF: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}
+
+// RenderJPEG converts a DOT string to JPEG format
+func RenderJPEG(dotContent string) ([]byte, error) {
+	ctx := context.Background()
+	g, err := graphviz.New(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create graphviz instance: %w", err)
+	}
+	defer g.Close()
+
+	graph, err := graphviz.ParseBytes([]byte(dotContent))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse DOT content: %w", err)
+	}
+	defer graph.Close()
+
+	var buf bytes.Buffer
+	if err := g.Render(ctx, graph, graphviz.JPG, &buf); err != nil {
+		return nil, fmt.Errorf("failed to render JPEG: %w", err)
+	}
+
+	return buf.Bytes(), nil
+}

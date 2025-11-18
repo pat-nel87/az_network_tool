@@ -47,7 +47,7 @@ func init() {
 	analyzeCmd.Flags().StringVarP(&outputFormat, "output-format", "o", "markdown", "Output format (json|markdown|html)")
 	analyzeCmd.Flags().StringVarP(&outputPath, "output", "f", "", "Output file path (defaults to stdout)")
 	analyzeCmd.Flags().BoolVar(&includeViz, "visualize", true, "Generate network topology diagram")
-	analyzeCmd.Flags().StringVar(&vizFormat, "viz-format", "svg", "Visualization format (svg|png|dot)")
+	analyzeCmd.Flags().StringVar(&vizFormat, "viz-format", "svg", "Visualization format (svg|png|pdf|jpg|dot)")
 	analyzeCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Use mock data instead of connecting to Azure (for testing)")
 
 	analyzeCmd.MarkFlagRequired("subscription")
@@ -299,6 +299,28 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp))
 			} else {
 				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.png", resourceGroup, timestamp))
+			}
+		case "pdf":
+			fmt.Println("  Rendering PDF...")
+			vizContent, err = visualization.RenderPDF(dotContent)
+			if err != nil {
+				fmt.Printf("  Warning: Could not render PDF: %v\n", err)
+				fmt.Println("  Falling back to DOT file...")
+				vizContent = []byte(dotContent)
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp))
+			} else {
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.pdf", resourceGroup, timestamp))
+			}
+		case "jpg", "jpeg":
+			fmt.Println("  Rendering JPEG...")
+			vizContent, err = visualization.RenderJPEG(dotContent)
+			if err != nil {
+				fmt.Printf("  Warning: Could not render JPEG: %v\n", err)
+				fmt.Println("  Falling back to DOT file...")
+				vizContent = []byte(dotContent)
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.dot", resourceGroup, timestamp))
+			} else {
+				vizFilename = filepath.Join(outputDir, fmt.Sprintf("network-topology-%s-%s.jpg", resourceGroup, timestamp))
 			}
 		case "dot":
 			fmt.Println("  Generating DOT file...")
