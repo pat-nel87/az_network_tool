@@ -46,6 +46,10 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 		dot.WriteString("    fontsize=14;\n")
 		dot.WriteString("    fontname=\"Helvetica-Bold\";\n\n")
 
+		// Create a VNet header node for peering connections
+		dot.WriteString(fmt.Sprintf("    %s [label=\"%s\", shape=box, style=\"filled,bold\", fillcolor=\"#d0e7ff\", fontsize=12, fontname=\"Helvetica-Bold\"];\n",
+			vnetNodeID, vnet.Name))
+
 		// Add subnets as nodes
 		for j, subnet := range vnet.Subnets {
 			subnetNodeID := fmt.Sprintf("subnet_%d_%d", i, j)
