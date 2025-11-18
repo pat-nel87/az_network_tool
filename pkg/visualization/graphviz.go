@@ -7,12 +7,31 @@ import (
 	"azure-network-analyzer/pkg/models"
 )
 
+// VisualizationOptions controls what is included in the visualization
+type VisualizationOptions struct {
+	ExcludePrivateLinks bool // If true, omit private endpoints from the visualization
+}
+
 // GenerateDOTFile creates a Graphviz DOT representation of the network topology
 func GenerateDOTFile(topology *models.NetworkTopology) string {
+	return GenerateDOTFileWithOptions(topology, VisualizationOptions{})
+}
+
+// GenerateDOTFileWithOptions creates a Graphviz DOT representation with custom options
+func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts VisualizationOptions) string {
 	var dot strings.Builder
 
 	dot.WriteString("digraph NetworkTopology {\n")
+	// Layout optimization attributes
 	dot.WriteString("  rankdir=TB;\n")
+	dot.WriteString("  margin=0.2;          // Reduce overall margin\n")
+	dot.WriteString("  pad=0.2;             // Reduce padding\n")
+	dot.WriteString("  ranksep=0.75;        // Spacing between ranks\n")
+	dot.WriteString("  nodesep=0.5;         // Spacing between nodes\n")
+	dot.WriteString("  splines=ortho;       // Use orthogonal lines for cleaner look\n")
+	dot.WriteString("  concentrate=true;    // Merge edges where possible\n")
+
+	// Default node and edge styles
 	dot.WriteString("  node [shape=box, style=filled];\n")
 	dot.WriteString("  edge [fontsize=10];\n")
 	dot.WriteString("  graph [fontname=\"Helvetica\", fontsize=12];\n")
@@ -205,8 +224,8 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 	// Private Endpoints will be shown in a table instead of as nodes
 	// (removed from graph for clarity)
 
-	// Add Private Endpoints Table (positioned at bottom)
-	if len(topology.PrivateEndpoints) > 0 {
+	// Add Private Endpoints Table (positioned at bottom) - unless excluded
+	if len(topology.PrivateEndpoints) > 0 && !opts.ExcludePrivateLinks {
 		dot.WriteString("\n  // Private Endpoints Table (bottom of diagram)\n")
 		dot.WriteString("  {\n")
 		dot.WriteString("    rank=sink;\n") // Force to bottom
@@ -243,24 +262,26 @@ func GenerateDOTFile(topology *models.NetworkTopology) string {
 		dot.WriteString("  }\n\n")
 	}
 
-	// Add legend
-	dot.WriteString("  // Legend\n")
-	dot.WriteString("  subgraph cluster_legend {\n")
-	dot.WriteString("    label=\"Legend\";\n")
-	dot.WriteString("    style=filled;\n")
-	dot.WriteString("    fillcolor=\"#f0f0f0\";\n")
-	dot.WriteString("    node [shape=plaintext];\n")
-	dot.WriteString("    legend [label=<\n")
-	dot.WriteString("      <TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">\n")
-	dot.WriteString("        <TR><TD BGCOLOR=\"#90EE90\">Subnet (with NSG)</TD></TR>\n")
-	dot.WriteString("        <TR><TD BGCOLOR=\"#FFB6C1\">Subnet (no NSG)</TD></TR>\n")
-	dot.WriteString("        <TR><TD BGCOLOR=\"#FFE4B5\">NSG</TD></TR>\n")
-	dot.WriteString("        <TR><TD BGCOLOR=\"#DDA0DD\">Route Table</TD></TR>\n")
-	dot.WriteString("        <TR><TD BGCOLOR=\"#9370DB\">VPN Gateway</TD></TR>\n")
-	dot.WriteString("        <TR><TD BGCOLOR=\"#FFA500\">Load Balancer</TD></TR>\n")
-	dot.WriteString("      </TABLE>\n")
-	dot.WriteString("    >];\n")
-	dot.WriteString("  }\n")
+	// Add legend - positioned at bottom (left-aligned)
+	dot.WriteString("  // Legend (positioned at bottom-left)\n")
+	dot.WriteString("  legend [shape=plaintext, label=<\n")
+	dot.WriteString("    <TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\" BGCOLOR=\"#f0f0f0\">\n")
+	dot.WriteString("      <TR><TD COLSPAN=\"2\" BGCOLOR=\"#d0d0d0\"><B>Legend</B></TD></TR>\n")
+	dot.WriteString("      <TR><TD BGCOLOR=\"#90EE90\" WIDTH=\"20\">  </TD><TD ALIGN=\"LEFT\">Subnet (with NSG)</TD></TR>\n")
+	dot.WriteString("      <TR><TD BGCOLOR=\"#FFB6C1\">  </TD><TD ALIGN=\"LEFT\">Subnet (no NSG)</TD></TR>\n")
+	dot.WriteString("      <TR><TD BGCOLOR=\"#FFE4B5\">  </TD><TD ALIGN=\"LEFT\">NSG</TD></TR>\n")
+	dot.WriteString("      <TR><TD BGCOLOR=\"#DDA0DD\">  </TD><TD ALIGN=\"LEFT\">Route Table</TD></TR>\n")
+	dot.WriteString("      <TR><TD BGCOLOR=\"#9370DB\">  </TD><TD ALIGN=\"LEFT\">VPN Gateway</TD></TR>\n")
+	dot.WriteString("      <TR><TD BGCOLOR=\"#FFA500\">  </TD><TD ALIGN=\"LEFT\">Load Balancer</TD></TR>\n")
+	dot.WriteString("    </TABLE>\n")
+	dot.WriteString("  >];\n\n")
+
+	// Use invisible edges to control legend positioning (bottom-left)
+	if len(topology.VirtualNetworks) > 0 {
+		// Create invisible edge from first VNet to legend to ensure left alignment
+		dot.WriteString("  // Position legend at bottom-left\n")
+		dot.WriteString("  { rank=sink; legend; }\n")
+	}
 
 	dot.WriteString("}\n")
 

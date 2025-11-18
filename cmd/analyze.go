@@ -16,13 +16,14 @@ import (
 )
 
 var (
-	subscriptionID string
-	resourceGroup  string
-	outputFormat   string
-	outputPath     string
-	includeViz     bool
-	vizFormat      string
-	dryRun         bool
+	subscriptionID       string
+	resourceGroup        string
+	outputFormat         string
+	outputPath           string
+	includeViz           bool
+	vizFormat            string
+	dryRun               bool
+	excludePrivateLinks  bool
 )
 
 var analyzeCmd = &cobra.Command{
@@ -49,6 +50,7 @@ func init() {
 	analyzeCmd.Flags().BoolVar(&includeViz, "visualize", true, "Generate network topology diagram")
 	analyzeCmd.Flags().StringVar(&vizFormat, "viz-format", "svg", "Visualization format (svg|png|pdf|jpg|dot)")
 	analyzeCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Use mock data instead of connecting to Azure (for testing)")
+	analyzeCmd.Flags().BoolVar(&excludePrivateLinks, "exclude-private-links", false, "Exclude private endpoints from visualization (reduces clutter for large topologies)")
 
 	analyzeCmd.MarkFlagRequired("subscription")
 	analyzeCmd.MarkFlagRequired("resource-group")
@@ -262,9 +264,15 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 	// 5. Generate visualization if requested
 	if includeViz {
 		fmt.Println("\nGenerating topology diagram...")
+		if excludePrivateLinks {
+			fmt.Println("  (Private endpoints excluded from visualization)")
+		}
 
-		// Generate DOT content
-		dotContent := visualization.GenerateDOTFile(topology)
+		// Generate DOT content with options
+		vizOpts := visualization.VisualizationOptions{
+			ExcludePrivateLinks: excludePrivateLinks,
+		}
+		dotContent := visualization.GenerateDOTFileWithOptions(topology, vizOpts)
 
 		timestamp := time.Now().Format("20060102-150405")
 		var vizFilename string
