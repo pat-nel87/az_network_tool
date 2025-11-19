@@ -44,6 +44,8 @@ network-topology-*
 *.dot
 *.png
 *.svg
+# But allow example documentation SVGs
+!docs/examples/*.svg
 !pkg/**/*.json
 !go.mod
 !go.sum
