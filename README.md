@@ -31,6 +31,46 @@ A comprehensive CLI tool for analyzing Azure network infrastructure, identifying
   - PNG raster images
   - Color-coded topology maps
 
+## Visualization Examples
+
+The Azure Network Topology Analyzer generates comprehensive, professional network topology visualizations with detailed information about your Azure network infrastructure. All examples use realistic Azure network configurations to demonstrate the tool's capabilities.
+
+### Simple Hub-Spoke Topology
+![Simple Hub-Spoke](docs/examples/simple-hub-spoke.svg)
+*A basic hub-and-spoke architecture with central hub VNet and multiple spoke VNets connected via VNet peering. Includes VPN gateway for hybrid connectivity.*
+
+### NAT Gateway Sharing
+![NAT Gateway](docs/examples/nat-gateway-sharing.svg)
+*Multiple subnets sharing a single NAT gateway - demonstrates smart deduplication where the NAT gateway appears once with connections from multiple subnets.*
+
+### Subnet-Level Details
+![Subnet Details](docs/examples/subnet-details.svg)
+*Detailed view showing subnets with Network Security Groups (NSGs) and Route Tables, clearly displaying their associations and relationships.*
+
+### Load Balancer Integration
+![Load Balancers](docs/examples/load-balancer-integration.svg)
+*Network topology featuring Azure Load Balancers (public and internal) and Application Gateway with Web Application Firewall (WAF).*
+
+### Private Links Table
+![Private Links](docs/examples/private-links-example.svg)
+*Example showing private endpoints displayed in a clean, organized table format below the topology - includes Storage, SQL, KeyVault, CosmosDB, and Container Registry private links.*
+
+### Full-Featured Topology
+![Full Featured](docs/examples/full-featured.svg)
+*Comprehensive example showcasing all supported Azure networking resources: VNets, peerings, VPN gateway, load balancers, WAF, NAT gateways, NSGs, route tables, and private endpoints.*
+
+### Key Features Demonstrated
+
+✨ **Automatic Discovery** - All network resources discovered and visualized automatically
+🔗 **VNet Peering** - Peering relationships clearly shown with bidirectional arrows
+⚖️ **Load Balancers & WAF** - Load balancers and Application Gateways with WAF integration
+🌐 **NAT Gateway Intelligence** - Smart deduplication shows shared NAT gateways correctly
+🔐 **Private Links** - Clean tabular display of private endpoint connections
+🛡️ **Security Groups** - NSG and route table associations clearly visualized
+🎨 **Professional Layout** - Optimized layout with integrated legend and color-coding
+
+[See more visualization options](#visualization-options)
+
 ## Quick Start
 
 ### Prerequisites
