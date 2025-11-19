@@ -188,24 +188,67 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 		}
 	}
 
-	// Add Load Balancers
-	for i, lb := range topology.LoadBalancers {
-		lbNodeID := fmt.Sprintf("lb_%d", i)
-		dot.WriteString(fmt.Sprintf("  %s [label=\"LB\\n%s\\n%s\", fillcolor=\"#FFA500\", shape=ellipse];\n",
-			lbNodeID, lb.Name, lb.SKU))
+	// Add Load Balancers - grouped for efficient layout
+	if len(topology.LoadBalancers) > 0 {
+		dot.WriteString("\n  // Load Balancers (grouped for efficient placement)\n")
 
-		// Connect to backend subnets (simplified - would need to parse backend pool IPs)
+		// Group load balancers to fill lower-left space efficiently
+		if len(topology.LoadBalancers) <= 3 {
+			// Few load balancers - put them on same rank
+			dot.WriteString("  { rank=same;\n")
+			for i, lb := range topology.LoadBalancers {
+				lbNodeID := fmt.Sprintf("lb_%d", i)
+				dot.WriteString(fmt.Sprintf("    %s [label=\"LB\\n%s\\n%s\", fillcolor=\"#FFA500\", shape=ellipse];\n",
+					lbNodeID, lb.Name, lb.SKU))
+			}
+			dot.WriteString("  }\n")
+		} else {
+			// Many load balancers - distribute across multiple ranks for vertical stacking
+			for i, lb := range topology.LoadBalancers {
+				lbNodeID := fmt.Sprintf("lb_%d", i)
+				dot.WriteString(fmt.Sprintf("  %s [label=\"LB\\n%s\\n%s\", fillcolor=\"#FFA500\", shape=ellipse];\n",
+					lbNodeID, lb.Name, lb.SKU))
+			}
+			// Create invisible edges to control vertical stacking
+			for i := 0; i < len(topology.LoadBalancers)-1; i++ {
+				dot.WriteString(fmt.Sprintf("  lb_%d -> lb_%d [style=invis];\n", i, i+1))
+			}
+		}
 	}
 
-	// Add Application Gateways
-	for i, appgw := range topology.AppGateways {
-		appgwNodeID := fmt.Sprintf("appgw_%d", i)
-		wafLabel := ""
-		if appgw.WAFEnabled {
-			wafLabel = "\\n[WAF Enabled]"
+	// Add Application Gateways - grouped for efficient layout
+	if len(topology.AppGateways) > 0 {
+		dot.WriteString("\n  // Application Gateways (grouped for efficient placement)\n")
+
+		if len(topology.AppGateways) <= 3 {
+			// Few app gateways - put them on same rank
+			dot.WriteString("  { rank=same;\n")
+			for i, appgw := range topology.AppGateways {
+				appgwNodeID := fmt.Sprintf("appgw_%d", i)
+				wafLabel := ""
+				if appgw.WAFEnabled {
+					wafLabel = "\\n[WAF Enabled]"
+				}
+				dot.WriteString(fmt.Sprintf("    %s [label=\"AppGW\\n%s\\n%s%s\", fillcolor=\"#FF69B4\", shape=ellipse];\n",
+					appgwNodeID, appgw.Name, appgw.SKU, wafLabel))
+			}
+			dot.WriteString("  }\n")
+		} else {
+			// Many app gateways - distribute for vertical stacking
+			for i, appgw := range topology.AppGateways {
+				appgwNodeID := fmt.Sprintf("appgw_%d", i)
+				wafLabel := ""
+				if appgw.WAFEnabled {
+					wafLabel = "\\n[WAF Enabled]"
+				}
+				dot.WriteString(fmt.Sprintf("  %s [label=\"AppGW\\n%s\\n%s%s\", fillcolor=\"#FF69B4\", shape=ellipse];\n",
+					appgwNodeID, appgw.Name, appgw.SKU, wafLabel))
+			}
+			// Create invisible edges to control vertical stacking
+			for i := 0; i < len(topology.AppGateways)-1; i++ {
+				dot.WriteString(fmt.Sprintf("  appgw_%d -> appgw_%d [style=invis];\n", i, i+1))
+			}
 		}
-		dot.WriteString(fmt.Sprintf("  %s [label=\"AppGW\\n%s\\n%s%s\", fillcolor=\"#FF69B4\", shape=ellipse];\n",
-			appgwNodeID, appgw.Name, appgw.SKU, wafLabel))
 	}
 
 	// Add VPN Gateways
@@ -221,15 +264,27 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 		}
 	}
 
-	// Private Endpoints will be shown in a table instead of as nodes
-	// (removed from graph for clarity)
+	// Bottom section: Legend and Private Links Table (aligned horizontally)
+	dot.WriteString("\n  // Bottom section - Legend and Private Links Table (top-aligned)\n")
+	dot.WriteString("  {\n")
+	dot.WriteString("    rank=sink;\n") // Both at bottom, tops aligned
+	dot.WriteString("    node [shape=plaintext];\n\n")
 
-	// Add Private Endpoints Table (positioned at bottom) - unless excluded
+	// Add legend (left side)
+	dot.WriteString("    legend [label=<\n")
+	dot.WriteString("      <TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\" BGCOLOR=\"#f0f0f0\">\n")
+	dot.WriteString("        <TR><TD COLSPAN=\"2\" BGCOLOR=\"#d0d0d0\"><B>Legend</B></TD></TR>\n")
+	dot.WriteString("        <TR><TD BGCOLOR=\"#90EE90\" WIDTH=\"20\">  </TD><TD ALIGN=\"LEFT\">Subnet (with NSG)</TD></TR>\n")
+	dot.WriteString("        <TR><TD BGCOLOR=\"#FFB6C1\">  </TD><TD ALIGN=\"LEFT\">Subnet (no NSG)</TD></TR>\n")
+	dot.WriteString("        <TR><TD BGCOLOR=\"#FFE4B5\">  </TD><TD ALIGN=\"LEFT\">NSG</TD></TR>\n")
+	dot.WriteString("        <TR><TD BGCOLOR=\"#DDA0DD\">  </TD><TD ALIGN=\"LEFT\">Route Table</TD></TR>\n")
+	dot.WriteString("        <TR><TD BGCOLOR=\"#9370DB\">  </TD><TD ALIGN=\"LEFT\">VPN Gateway</TD></TR>\n")
+	dot.WriteString("        <TR><TD BGCOLOR=\"#FFA500\">  </TD><TD ALIGN=\"LEFT\">Load Balancer</TD></TR>\n")
+	dot.WriteString("      </TABLE>\n")
+	dot.WriteString("    >];\n\n")
+
+	// Add Private Endpoints Table (center/right side) - unless excluded
 	if len(topology.PrivateEndpoints) > 0 && !opts.ExcludePrivateLinks {
-		dot.WriteString("\n  // Private Endpoints Table (bottom of diagram)\n")
-		dot.WriteString("  {\n")
-		dot.WriteString("    rank=sink;\n") // Force to bottom
-		dot.WriteString("    node [shape=plaintext];\n")
 		dot.WriteString("    pe_table [label=<\n")
 		dot.WriteString("      <TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"3\">\n")
 		dot.WriteString("        <TR><TD COLSPAN=\"5\" BGCOLOR=\"#FFB6C1\"><FONT POINT-SIZE=\"11\"><B>Private Endpoints</B></FONT></TD></TR>\n")
@@ -258,30 +313,13 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 		}
 
 		dot.WriteString("      </TABLE>\n")
-		dot.WriteString("    >];\n")
-		dot.WriteString("  }\n\n")
+		dot.WriteString("    >];\n\n")
+
+		// Add invisible edge to control spacing between legend and table
+		dot.WriteString("    legend -> pe_table [style=invis, minlen=2];\n")
 	}
 
-	// Add legend - positioned at bottom (left-aligned)
-	dot.WriteString("  // Legend (positioned at bottom-left)\n")
-	dot.WriteString("  legend [shape=plaintext, label=<\n")
-	dot.WriteString("    <TABLE BORDER=\"1\" CELLBORDER=\"1\" CELLSPACING=\"0\" CELLPADDING=\"4\" BGCOLOR=\"#f0f0f0\">\n")
-	dot.WriteString("      <TR><TD COLSPAN=\"2\" BGCOLOR=\"#d0d0d0\"><B>Legend</B></TD></TR>\n")
-	dot.WriteString("      <TR><TD BGCOLOR=\"#90EE90\" WIDTH=\"20\">  </TD><TD ALIGN=\"LEFT\">Subnet (with NSG)</TD></TR>\n")
-	dot.WriteString("      <TR><TD BGCOLOR=\"#FFB6C1\">  </TD><TD ALIGN=\"LEFT\">Subnet (no NSG)</TD></TR>\n")
-	dot.WriteString("      <TR><TD BGCOLOR=\"#FFE4B5\">  </TD><TD ALIGN=\"LEFT\">NSG</TD></TR>\n")
-	dot.WriteString("      <TR><TD BGCOLOR=\"#DDA0DD\">  </TD><TD ALIGN=\"LEFT\">Route Table</TD></TR>\n")
-	dot.WriteString("      <TR><TD BGCOLOR=\"#9370DB\">  </TD><TD ALIGN=\"LEFT\">VPN Gateway</TD></TR>\n")
-	dot.WriteString("      <TR><TD BGCOLOR=\"#FFA500\">  </TD><TD ALIGN=\"LEFT\">Load Balancer</TD></TR>\n")
-	dot.WriteString("    </TABLE>\n")
-	dot.WriteString("  >];\n\n")
-
-	// Use invisible edges to control legend positioning (bottom-left)
-	if len(topology.VirtualNetworks) > 0 {
-		// Create invisible edge from first VNet to legend to ensure left alignment
-		dot.WriteString("  // Position legend at bottom-left\n")
-		dot.WriteString("  { rank=sink; legend; }\n")
-	}
+	dot.WriteString("  }\n")
 
 	dot.WriteString("}\n")
 

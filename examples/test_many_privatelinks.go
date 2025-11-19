@@ -169,11 +169,25 @@ func main() {
 				SKU:      "Standard",
 				Type:     "Internal",
 			},
+			{
+				ID:       "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/loadBalancers/prod-api-lb",
+				Name:     "prod-api-lb-public",
+				Location: "eastus",
+				SKU:      "Standard",
+				Type:     "Public",
+			},
+			{
+				ID:       "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/loadBalancers/prod-services-lb",
+				Name:     "prod-services-lb-internal",
+				Location: "westus",
+				SKU:      "Standard",
+				Type:     "Internal",
+			},
 		},
 		AppGateways: []models.ApplicationGateway{
 			{
-				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/prod-appgw",
-				Name:       "prod-appgw-waf",
+				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/prod-appgw-waf-1",
+				Name:       "prod-appgw-waf-primary",
 				Location:   "eastus",
 				SKU:        "WAF_v2",
 				Tier:       "WAF_v2",
@@ -182,13 +196,53 @@ func main() {
 				WAFMode:    "Prevention",
 			},
 			{
-				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/services-appgw",
-				Name:       "services-appgw",
+				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/prod-appgw-waf-2",
+				Name:       "prod-appgw-waf-secondary",
+				Location:   "eastus",
+				SKU:        "WAF_v2",
+				Tier:       "WAF_v2",
+				Capacity:   2,
+				WAFEnabled: true,
+				WAFMode:    "Detection",
+			},
+			{
+				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/prod-appgw-waf-3",
+				Name:       "prod-appgw-waf-regional",
 				Location:   "westus",
+				SKU:        "WAF_v2",
+				Tier:       "WAF_v2",
+				Capacity:   2,
+				WAFEnabled: true,
+				WAFMode:    "Prevention",
+			},
+			{
+				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/services-appgw-waf",
+				Name:       "services-appgw-waf",
+				Location:   "westus",
+				SKU:        "WAF_v2",
+				Tier:       "WAF_v2",
+				Capacity:   2,
+				WAFEnabled: true,
+				WAFMode:    "Prevention",
+			},
+			{
+				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/staging-appgw",
+				Name:       "staging-appgw-standard",
+				Location:   "eastus",
 				SKU:        "Standard_v2",
 				Tier:       "Standard_v2",
-				Capacity:   2,
+				Capacity:   1,
 				WAFEnabled: false,
+			},
+			{
+				ID:         "/subscriptions/demo/resourceGroups/prod-rg/providers/Microsoft.Network/applicationGateways/dev-appgw-waf",
+				Name:       "dev-appgw-waf",
+				Location:   "eastus",
+				SKU:        "WAF_v2",
+				Tier:       "WAF_v2",
+				Capacity:   1,
+				WAFEnabled: true,
+				WAFMode:    "Detection",
 			},
 		},
 		PrivateEndpoints: []models.PrivateEndpoint{},
@@ -257,8 +311,8 @@ func main() {
 	fmt.Printf("  - 8 Subnets\n")
 	fmt.Printf("  - 25 Private Endpoints\n")
 	fmt.Printf("  - 1 VPN Gateway\n")
-	fmt.Printf("  - 3 Load Balancers\n")
-	fmt.Printf("  - 2 Application Gateways\n")
+	fmt.Printf("  - 5 Load Balancers\n")
+	fmt.Printf("  - 6 Application Gateways (5 with WAF enabled)\n")
 	fmt.Printf("  - Shared NAT Gateway (3 subnets)\n")
 	fmt.Printf("  - 2 NSGs (shared across subnets)\n")
 	fmt.Printf("  - 1 Route Table (shared)\n")
