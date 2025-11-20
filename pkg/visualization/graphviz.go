@@ -26,10 +26,11 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 	dot.WriteString("  rankdir=TB;\n")
 	dot.WriteString("  margin=0.2;          // Reduce overall margin\n")
 	dot.WriteString("  pad=0.2;             // Reduce padding\n")
-	dot.WriteString("  ranksep=0.75;        // Spacing between ranks\n")
-	dot.WriteString("  nodesep=0.5;         // Spacing between nodes\n")
-	dot.WriteString("  splines=ortho;       // Use orthogonal lines for cleaner look\n")
+	dot.WriteString("  ranksep=1.0;         // Increased spacing between ranks to avoid overlaps\n")
+	dot.WriteString("  nodesep=0.6;         // Increased spacing between nodes\n")
+	dot.WriteString("  splines=polyline;    // Use polyline for better edge routing around obstacles\n")
 	dot.WriteString("  concentrate=true;    // Merge edges where possible\n")
+	dot.WriteString("  compound=true;       // Allow edges to/from clusters\n")
 
 	// Default node and edge styles
 	dot.WriteString("  node [shape=box, style=filled];\n")
@@ -317,7 +318,8 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 							if routeLabel == "0.0.0.0/0" {
 								routeLabel = "default route"
 							}
-							dot.WriteString(fmt.Sprintf("  %s -> %s [style=bold, color=\"#FF6B6B\", label=\"%s\\negress via FW\", constraint=false];\n",
+							// Use penwidth for emphasis and respect layout constraints
+							dot.WriteString(fmt.Sprintf("  %s -> %s [style=bold, color=\"#FF6B6B\", penwidth=2.0, label=\"%s\\negress via FW\"];\n",
 								rtNodeID, fwNode, routeLabel))
 							break
 						}
