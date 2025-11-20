@@ -264,6 +264,70 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 		}
 	}
 
+	// Add Azure Firewalls - grouped for efficient layout
+	firewallNodes := make(map[string]string) // firewall ID -> node ID
+	if len(topology.AzureFirewalls) > 0 {
+		dot.WriteString("\n  // Azure Firewalls (grouped for efficient placement)\n")
+
+		if len(topology.AzureFirewalls) <= 3 {
+			// Few firewalls - put them on same rank
+			dot.WriteString("  { rank=same;\n")
+			for i, fw := range topology.AzureFirewalls {
+				fwNodeID := fmt.Sprintf("fw_%d", i)
+				firewallNodes[fw.ID] = fwNodeID
+				dot.WriteString(fmt.Sprintf("    %s [label=\"Firewall\\n%s\\n%s\\n%s\", fillcolor=\"#FF6B6B\", shape=hexagon];\n",
+					fwNodeID, fw.Name, fw.SKU, fw.PrivateIPAddress))
+			}
+			dot.WriteString("  }\n")
+		} else {
+			// Many firewalls - distribute for vertical stacking
+			for i, fw := range topology.AzureFirewalls {
+				fwNodeID := fmt.Sprintf("fw_%d", i)
+				firewallNodes[fw.ID] = fwNodeID
+				dot.WriteString(fmt.Sprintf("  %s [label=\"Firewall\\n%s\\n%s\\n%s\", fillcolor=\"#FF6B6B\", shape=hexagon];\n",
+					fwNodeID, fw.Name, fw.SKU, fw.PrivateIPAddress))
+			}
+			// Create invisible edges to control vertical stacking
+			for i := 0; i < len(topology.AzureFirewalls)-1; i++ {
+				dot.WriteString(fmt.Sprintf("  fw_%d -> fw_%d [style=invis];\n", i, i+1))
+			}
+		}
+
+		// Connect firewalls to their subnets
+		for _, fw := range topology.AzureFirewalls {
+			if subnetNode, exists := subnetNodes[fw.SubnetID]; exists {
+				fwNode := firewallNodes[fw.ID]
+				dot.WriteString(fmt.Sprintf("  %s -> %s [style=bold, color=\"#FF6B6B\", label=\"protects\"];\n",
+					fwNode, subnetNode))
+			}
+		}
+
+		// Connect route tables to firewalls (when routes use firewall as next hop)
+		for _, rt := range topology.RouteTables {
+			rtNodeID := routeTables[rt.ID]
+			for _, route := range rt.Routes {
+				// Check if route uses a Virtual Appliance (firewall) as next hop
+				if route.NextHopType == "VirtualAppliance" && route.NextHopIPAddress != "" {
+					// Find the firewall with matching private IP
+					for _, fw := range topology.AzureFirewalls {
+						if fw.PrivateIPAddress == route.NextHopIPAddress {
+							fwNode := firewallNodes[fw.ID]
+							// Create edge showing route -> firewall for egress
+							routeLabel := route.AddressPrefix
+							if routeLabel == "0.0.0.0/0" {
+								routeLabel = "default route"
+							}
+							dot.WriteString(fmt.Sprintf("  %s -> %s [style=bold, color=\"#FF6B6B\", label=\"%s\\negress via FW\", constraint=false];\n",
+								rtNodeID, fwNode, routeLabel))
+							break
+						}
+					}
+				}
+			}
+		}
+		dot.WriteString("\n")
+	}
+
 	// Bottom section: Legend and Private Links Table (aligned horizontally)
 	dot.WriteString("\n  // Bottom section - Legend and Private Links Table (top-aligned)\n")
 	dot.WriteString("  {\n")
@@ -280,6 +344,7 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 	dot.WriteString("        <TR><TD BGCOLOR=\"#DDA0DD\">  </TD><TD ALIGN=\"LEFT\">Route Table</TD></TR>\n")
 	dot.WriteString("        <TR><TD BGCOLOR=\"#9370DB\">  </TD><TD ALIGN=\"LEFT\">VPN Gateway</TD></TR>\n")
 	dot.WriteString("        <TR><TD BGCOLOR=\"#FFA500\">  </TD><TD ALIGN=\"LEFT\">Load Balancer</TD></TR>\n")
+	dot.WriteString("        <TR><TD BGCOLOR=\"#FF6B6B\">  </TD><TD ALIGN=\"LEFT\">Azure Firewall</TD></TR>\n")
 	dot.WriteString("      </TABLE>\n")
 	dot.WriteString("    >];\n\n")
 

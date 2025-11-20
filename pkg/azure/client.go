@@ -30,6 +30,7 @@ type AzureClient struct {
 	erAuthorizationsClient *armnetwork.ExpressRouteCircuitAuthorizationsClient
 	loadBalancersClient    *armnetwork.LoadBalancersClient
 	appGatewaysClient      *armnetwork.ApplicationGatewaysClient
+	azureFirewallsClient   *armnetwork.AzureFirewallsClient
 }
 
 // NewAzureClient creates a new Azure client with DefaultAzureCredential
@@ -210,6 +211,17 @@ func (c *AzureClient) getAppGatewaysClient() (*armnetwork.ApplicationGatewaysCli
 		c.appGatewaysClient = client
 	}
 	return c.appGatewaysClient, nil
+}
+
+func (c *AzureClient) getAzureFirewallsClient() (*armnetwork.AzureFirewallsClient, error) {
+	if c.azureFirewallsClient == nil {
+		client, err := armnetwork.NewAzureFirewallsClient(c.subscriptionID, c.cred, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Azure Firewalls client: %w", err)
+		}
+		c.azureFirewallsClient = client
+	}
+	return c.azureFirewallsClient, nil
 }
 
 // Helper functions for extracting data from Azure SDK types

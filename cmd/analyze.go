@@ -85,6 +85,7 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		fmt.Printf("  - Generated %d ExpressRoute Circuits\n", len(topology.ERCircuits))
 		fmt.Printf("  - Generated %d Load Balancers\n", len(topology.LoadBalancers))
 		fmt.Printf("  - Generated %d Application Gateways\n", len(topology.AppGateways))
+		fmt.Printf("  - Generated %d Azure Firewalls\n", len(topology.AzureFirewalls))
 		if topology.NetworkWatcher != nil {
 			fmt.Printf("  - Generated Network Watcher insights\n")
 		}
@@ -193,6 +194,15 @@ func runAnalyze(cmd *cobra.Command, args []string) error {
 		}
 		topology.AppGateways = appGateways
 		fmt.Printf("    Found %d Application Gateways\n", len(appGateways))
+
+		// Collect Azure Firewalls
+		fmt.Println("  - Collecting Azure Firewalls...")
+		azureFirewalls, err := client.GetAzureFirewalls(ctx, resourceGroup)
+		if err != nil {
+			return fmt.Errorf("failed to get azure firewalls: %w", err)
+		}
+		topology.AzureFirewalls = azureFirewalls
+		fmt.Printf("    Found %d Azure Firewalls\n", len(azureFirewalls))
 
 		// Collect Network Watcher insights
 		fmt.Println("  - Collecting Network Watcher insights...")
@@ -361,6 +371,7 @@ func countResources(topology *models.NetworkTopology) int {
 	count += len(topology.ERCircuits)
 	count += len(topology.LoadBalancers)
 	count += len(topology.AppGateways)
+	count += len(topology.AzureFirewalls)
 	return count
 }
 
@@ -390,6 +401,7 @@ func displayAnalysisResults(report *analyzer.AnalysisReport) {
 	fmt.Printf("ExpressRoute Circuits: %d\n", report.Summary.TotalERCircuits)
 	fmt.Printf("Load Balancers: %d\n", report.Summary.TotalLoadBalancers)
 	fmt.Printf("Application Gateways: %d\n", report.Summary.TotalAppGateways)
+	fmt.Printf("Azure Firewalls: %d\n", report.Summary.TotalAzureFirewalls)
 	if len(report.Summary.TotalIPAddressSpace) > 0 {
 		fmt.Printf("Address Spaces: %v\n", report.Summary.TotalIPAddressSpace)
 	}

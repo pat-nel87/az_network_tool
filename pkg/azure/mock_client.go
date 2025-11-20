@@ -36,6 +36,17 @@ func (c *MockAzureClient) GetVirtualNetworks(ctx context.Context, resourceGroup 
 			EnableDDoS:    true,
 			Subnets: []models.Subnet{
 				{
+					ID:                   "/subscriptions/" + c.subscriptionID + "/resourceGroups/" + resourceGroup + "/providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/AzureFirewallSubnet",
+					Name:                 "AzureFirewallSubnet",
+					AddressPrefix:        "10.0.0.0/26",
+					NetworkSecurityGroup: nil, // Firewall subnet doesn't need NSG
+					RouteTable:           nil,
+					NATGateway:           nil,
+					PrivateEndpoints:     []string{},
+					ServiceEndpoints:     []string{},
+					Delegations:          []string{},
+				},
+				{
 					ID:                   "/subscriptions/" + c.subscriptionID + "/resourceGroups/" + resourceGroup + "/providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/subnet-web",
 					Name:                 "subnet-web",
 					AddressPrefix:        "10.0.1.0/24",
@@ -245,13 +256,13 @@ func (c *MockAzureClient) GetRouteTables(ctx context.Context, resourceGroup stri
 					Name:             "route-to-internet",
 					AddressPrefix:    "0.0.0.0/0",
 					NextHopType:      "VirtualAppliance",
-					NextHopIPAddress: "10.0.0.100",
+					NextHopIPAddress: "10.0.0.4", // Points to Azure Firewall
 				},
 				{
 					Name:             "route-to-onprem",
 					AddressPrefix:    "192.168.0.0/16",
-					NextHopType:      "VirtualNetworkGateway",
-					NextHopIPAddress: "",
+					NextHopType:      "VirtualAppliance",
+					NextHopIPAddress: "10.0.0.4", // Points to Azure Firewall
 				},
 			},
 			DisableBGPRoutePropagation: false,
@@ -378,6 +389,27 @@ func (c *MockAzureClient) GetLoadBalancers(ctx context.Context, resourceGroup st
 	}, nil
 }
 
+// GetAzureFirewalls returns mock Azure Firewall data
+func (c *MockAzureClient) GetAzureFirewalls(ctx context.Context, resourceGroup string) ([]models.AzureFirewall, error) {
+	return []models.AzureFirewall{
+		{
+			ID:               "/subscriptions/" + c.subscriptionID + "/resourceGroups/" + resourceGroup + "/providers/Microsoft.Network/azureFirewalls/fw-hub",
+			Name:             "fw-hub",
+			ResourceGroup:    resourceGroup,
+			Location:         "eastus",
+			SKU:              "Premium",
+			SubnetID:         "/subscriptions/" + c.subscriptionID + "/resourceGroups/" + resourceGroup + "/providers/Microsoft.Network/virtualNetworks/vnet-hub/subnets/AzureFirewallSubnet",
+			PrivateIPAddress: "10.0.0.4",
+			PublicIPAddresses: []string{
+				"/subscriptions/" + c.subscriptionID + "/resourceGroups/" + resourceGroup + "/providers/Microsoft.Network/publicIPAddresses/pip-firewall",
+			},
+			ThreatIntelMode:   "Alert",
+			DNSProxyEnabled:   true,
+			ProvisioningState: "Succeeded",
+		},
+	}, nil
+}
+
 // GetApplicationGateways returns mock application gateway data
 func (c *MockAzureClient) GetApplicationGateways(ctx context.Context, resourceGroup string) ([]models.ApplicationGateway, error) {
 	return []models.ApplicationGateway{
@@ -494,6 +526,7 @@ func GenerateMockTopology(subscriptionID, resourceGroup string) *models.NetworkT
 	erCircuits, _ := client.GetExpressRouteCircuits(ctx, resourceGroup)
 	loadBalancers, _ := client.GetLoadBalancers(ctx, resourceGroup)
 	appGateways, _ := client.GetApplicationGateways(ctx, resourceGroup)
+	azureFirewalls, _ := client.GetAzureFirewalls(ctx, resourceGroup)
 	nwInsights, _ := client.GetNetworkWatcherInsights(ctx, resourceGroup)
 
 	return &models.NetworkTopology{
@@ -509,6 +542,7 @@ func GenerateMockTopology(subscriptionID, resourceGroup string) *models.NetworkT
 		ERCircuits:       erCircuits,
 		LoadBalancers:    loadBalancers,
 		AppGateways:      appGateways,
+		AzureFirewalls:   azureFirewalls,
 		NetworkWatcher:   nwInsights,
 		Timestamp:        time.Now(),
 	}

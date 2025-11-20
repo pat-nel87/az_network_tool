@@ -254,3 +254,85 @@ func (c *AzureClient) GetERAuthorizations(ctx context.Context, resourceGroup, ci
 
 	return authorizations, nil
 }
+
+// GetAzureFirewalls retrieves all Azure Firewalls in the specified resource group
+func (c *AzureClient) GetAzureFirewalls(ctx context.Context, resourceGroup string) ([]models.AzureFirewall, error) {
+	client, err := c.getAzureFirewallsClient()
+	if err != nil {
+		return nil, err
+	}
+
+	var firewalls []models.AzureFirewall
+	pager := client.NewListPager(resourceGroup, nil)
+
+	for pager.More() {
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get next page of Azure Firewalls: %w", err)
+		}
+
+		for _, fw := range page.Value {
+			firewall := models.AzureFirewall{
+				ID:                safeString(fw.ID),
+				Name:              safeString(fw.Name),
+				ResourceGroup:     resourceGroup,
+				Location:          safeString(fw.Location),
+				PublicIPAddresses: []string{},
+			}
+
+			// Extract SKU
+			if fw.Properties != nil {
+				if fw.Properties.SKU != nil && fw.Properties.SKU.Tier != nil {
+					firewall.SKU = string(*fw.Properties.SKU.Tier)
+				}
+
+				// Extract subnet ID (AzureFirewallSubnet)
+				if len(fw.Properties.IPConfigurations) > 0 {
+					ipConfig := fw.Properties.IPConfigurations[0]
+					if ipConfig.Properties != nil {
+						if ipConfig.Properties.Subnet != nil && ipConfig.Properties.Subnet.ID != nil {
+							firewall.SubnetID = *ipConfig.Properties.Subnet.ID
+						}
+						if ipConfig.Properties.PrivateIPAddress != nil {
+							firewall.PrivateIPAddress = *ipConfig.Properties.PrivateIPAddress
+						}
+						// Collect public IP address IDs
+						if ipConfig.Properties.PublicIPAddress != nil && ipConfig.Properties.PublicIPAddress.ID != nil {
+							firewall.PublicIPAddresses = append(firewall.PublicIPAddresses, *ipConfig.Properties.PublicIPAddress.ID)
+						}
+					}
+				}
+
+				// Collect additional public IPs from other IP configurations
+				for i := 1; i < len(fw.Properties.IPConfigurations); i++ {
+					ipConfig := fw.Properties.IPConfigurations[i]
+					if ipConfig.Properties != nil && ipConfig.Properties.PublicIPAddress != nil && ipConfig.Properties.PublicIPAddress.ID != nil {
+						firewall.PublicIPAddresses = append(firewall.PublicIPAddresses, *ipConfig.Properties.PublicIPAddress.ID)
+					}
+				}
+
+				// Extract firewall policy
+				if fw.Properties.FirewallPolicy != nil && fw.Properties.FirewallPolicy.ID != nil {
+					firewall.FirewallPolicyID = *fw.Properties.FirewallPolicy.ID
+				}
+
+				// Extract threat intelligence mode
+				if fw.Properties.ThreatIntelMode != nil {
+					firewall.ThreatIntelMode = string(*fw.Properties.ThreatIntelMode)
+				}
+
+				// Note: DNS proxy settings would need to be extracted from AdditionalProperties
+				// if available in the SDK response. This is optional and not critical for visualization.
+
+				// Extract provisioning state
+				if fw.Properties.ProvisioningState != nil {
+					firewall.ProvisioningState = string(*fw.Properties.ProvisioningState)
+				}
+			}
+
+			firewalls = append(firewalls, firewall)
+		}
+	}
+
+	return firewalls, nil
+}

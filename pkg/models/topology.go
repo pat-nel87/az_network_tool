@@ -16,6 +16,7 @@ type NetworkTopology struct {
 	ERCircuits       []ExpressRouteCircuit    `json:"expressRouteCircuits"`
 	LoadBalancers    []LoadBalancer           `json:"loadBalancers"`
 	AppGateways      []ApplicationGateway     `json:"applicationGateways"`
+	AzureFirewalls   []AzureFirewall          `json:"azureFirewalls"`
 	NetworkWatcher   *NetworkWatcherInsights  `json:"networkWatcher,omitempty"`
 	Timestamp        time.Time                `json:"timestamp"`
 }
@@ -354,6 +355,22 @@ type AppGWProbe struct {
 	Interval           int32  `json:"interval"`
 	Timeout            int32  `json:"timeout"`
 	UnhealthyThreshold int32  `json:"unhealthyThreshold"`
+}
+
+// AzureFirewall represents an Azure Firewall
+type AzureFirewall struct {
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	ResourceGroup     string   `json:"resourceGroup"`
+	Location          string   `json:"location"`
+	SKU               string   `json:"sku"` // Standard, Premium, Basic
+	SubnetID          string   `json:"subnetId"`
+	PrivateIPAddress  string   `json:"privateIpAddress"`
+	PublicIPAddresses []string `json:"publicIpAddresses"`
+	FirewallPolicyID  string   `json:"firewallPolicyId,omitempty"`
+	ThreatIntelMode   string   `json:"threatIntelMode"`
+	DNSProxyEnabled   bool     `json:"dnsProxyEnabled"`
+	ProvisioningState string   `json:"provisioningState"`
 }
 
 // NetworkWatcherInsights contains Network Watcher related information

@@ -23,6 +23,7 @@ type TopologySummary struct {
 	TotalERCircuits       int      `json:"total_er_circuits"`
 	TotalLoadBalancers    int      `json:"total_load_balancers"`
 	TotalAppGateways      int      `json:"total_app_gateways"`
+	TotalAzureFirewalls   int      `json:"total_azure_firewalls"`
 	TotalIPAddressSpace   []string `json:"total_ip_address_space"`
 	VNetPeeringCount      int      `json:"vnet_peering_count"`
 	CrossRGDependencies   int      `json:"cross_rg_dependencies"`

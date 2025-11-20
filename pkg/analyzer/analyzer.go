@@ -32,6 +32,7 @@ func generateSummary(topology *models.NetworkTopology) TopologySummary {
 		TotalERCircuits:       len(topology.ERCircuits),
 		TotalLoadBalancers:    len(topology.LoadBalancers),
 		TotalAppGateways:      len(topology.AppGateways),
+		TotalAzureFirewalls:   len(topology.AzureFirewalls),
 		TotalIPAddressSpace:   []string{},
 	}
 
