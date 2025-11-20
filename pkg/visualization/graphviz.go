@@ -347,6 +347,37 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 				}
 			}
 		}
+
+		// Check if any firewalls have public IPs (Internet egress capability)
+		hasInternetEgress := false
+		for _, fw := range topology.AzureFirewalls {
+			if len(fw.PublicIPAddresses) > 0 {
+				hasInternetEgress = true
+				break
+			}
+		}
+
+		// Add Internet node if any firewall has public IP egress
+		if hasInternetEgress {
+			dot.WriteString("\n  // Internet node (egress destination)\n")
+			dot.WriteString("  internet [label=\"Internet\", fillcolor=\"#87CEEB\", shape=cloud, style=filled];\n\n")
+
+			// Connect firewalls with public IPs to Internet
+			for _, fw := range topology.AzureFirewalls {
+				if len(fw.PublicIPAddresses) > 0 {
+					fwNode, fwExists := firewallNodes[fw.ID]
+					if fwExists {
+						publicIPCount := len(fw.PublicIPAddresses)
+						label := "Public IP egress"
+						if publicIPCount > 1 {
+							label = fmt.Sprintf("%d Public IPs\\nInternet egress", publicIPCount)
+						}
+						dot.WriteString(fmt.Sprintf("  %s -> internet [style=bold, color=\"#4169E1\", penwidth=2.0, label=\"%s\"];\n",
+							fwNode, label))
+					}
+				}
+			}
+		}
 		dot.WriteString("\n")
 	}
 
