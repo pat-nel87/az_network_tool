@@ -296,8 +296,10 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 
 		// Connect firewalls to their subnets
 		for _, fw := range topology.AzureFirewalls {
-			if subnetNode, exists := subnetNodes[fw.SubnetID]; exists {
-				fwNode := firewallNodes[fw.ID]
+			// Defensive check: ensure both nodes exist before creating edge
+			fwNode, fwExists := firewallNodes[fw.ID]
+			subnetNode, subnetExists := subnetNodes[fw.SubnetID]
+			if fwExists && subnetExists {
 				dot.WriteString(fmt.Sprintf("  %s -> %s [style=bold, color=\"#FF6B6B\", label=\"protects\"];\n",
 					fwNode, subnetNode))
 			}
@@ -305,14 +307,24 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 
 		// Connect route tables to firewalls (when routes use firewall as next hop)
 		for _, rt := range topology.RouteTables {
-			rtNodeID := routeTables[rt.ID]
+			// Defensive check: ensure route table node exists
+			rtNodeID, rtExists := routeTables[rt.ID]
+			if !rtExists {
+				continue // Skip if route table node doesn't exist
+			}
+
 			for _, route := range rt.Routes {
 				// Check if route uses a Virtual Appliance (firewall) as next hop
 				if route.NextHopType == "VirtualAppliance" && route.NextHopIPAddress != "" {
 					// Find the firewall with matching private IP
 					for _, fw := range topology.AzureFirewalls {
 						if fw.PrivateIPAddress == route.NextHopIPAddress {
-							fwNode := firewallNodes[fw.ID]
+							// Defensive check: ensure firewall node exists
+							fwNode, fwExists := firewallNodes[fw.ID]
+							if !fwExists {
+								break // Skip if firewall node doesn't exist
+							}
+
 							// Create edge showing route -> firewall for egress
 							routeLabel := route.AddressPrefix
 							if routeLabel == "0.0.0.0/0" {
@@ -397,10 +409,60 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 
 func sanitizeName(name string) string {
 	// Replace characters that are invalid in DOT identifiers
-	name = strings.ReplaceAll(name, "-", "_")
-	name = strings.ReplaceAll(name, ".", "_")
-	name = strings.ReplaceAll(name, " ", "_")
-	return name
+	// DOT identifiers can only contain: letters, digits, underscores
+	// and must not start with a digit (but we allow it for simplicity)
+
+	replacements := map[string]string{
+		"-":  "_",
+		".":  "_",
+		" ":  "_",
+		"(":  "_",
+		")":  "_",
+		"[":  "_",
+		"]":  "_",
+		"{":  "_",
+		"}":  "_",
+		":":  "_",
+		";":  "_",
+		",":  "_",
+		"<":  "_",
+		">":  "_",
+		"\"": "_",
+		"'":  "_",
+		"/":  "_",
+		"\\": "_",
+		"|":  "_",
+		"!":  "_",
+		"@":  "_",
+		"#":  "_",
+		"$":  "_",
+		"%":  "_",
+		"^":  "_",
+		"&":  "_",
+		"*":  "_",
+		"+":  "_",
+		"=":  "_",
+		"~":  "_",
+		"`":  "_",
+		"?":  "_",
+	}
+
+	result := name
+	for old, new := range replacements {
+		result = strings.ReplaceAll(result, old, new)
+	}
+
+	// Remove any remaining non-alphanumeric characters except underscores
+	var builder strings.Builder
+	for _, r := range result {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' {
+			builder.WriteRune(r)
+		} else {
+			builder.WriteRune('_')
+		}
+	}
+
+	return builder.String()
 }
 
 func extractResourceName(resourceID string) string {
