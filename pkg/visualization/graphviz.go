@@ -120,6 +120,14 @@ func GenerateDOTFileWithOptions(topology *models.NetworkTopology, opts Visualiza
 			nsgNodeID, nsgName))
 	}
 
+	// Ensure ALL route tables are in the map (including orphaned ones)
+	// This is important for route tables that route to firewalls but aren't yet attached to subnets
+	for _, rt := range topology.RouteTables {
+		if _, exists := routeTables[rt.ID]; !exists {
+			routeTables[rt.ID] = fmt.Sprintf("rt_%s", sanitizeName(extractResourceName(rt.ID)))
+		}
+	}
+
 	// Render deduplicated Route Tables (outside clusters)
 	for rtID, rtNodeID := range routeTables {
 		rtName := extractResourceName(rtID)
